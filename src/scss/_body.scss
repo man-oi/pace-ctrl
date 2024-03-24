@@ -1,0 +1,10 @@
+body {
+  html[lang="de"] & {
+    min-height: 100vh;
+    padding: 0;
+    background-image: url('../assets/images/berlin/01.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+}

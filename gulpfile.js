@@ -6,13 +6,14 @@ import postcss from 'gulp-postcss';
 import htmlmin from 'gulp-htmlmin';
 import terser from 'gulp-terser';
 import rename from 'gulp-rename';
-import { nunjucksCompile } from 'gulp-nunjucks';
+import nunjucks from 'gulp-nunjucks-render';
 
 import dartSass from 'sass';
 import mozjpeg from 'imagemin-mozjpeg';
 import optipng from 'imagemin-optipng';
 import svgo from 'imagemin-svgo';
 import autoprefixer from 'autoprefixer';
+import browserSync from 'browser-sync';
 import cssnano from 'cssnano';
 import { deleteAsync as del } from 'del';
 
@@ -40,6 +41,21 @@ const config = {
 };
 
 // FUNCTIONS
+const startServer = (done) => {
+  browserSync.init({
+    server: {
+      baseDir: './dist/',
+    },
+    open: false,
+  });
+  done();
+};
+
+const reloadServer = (done) => {
+  browserSync.reload();
+  done();
+}
+
 const cleanDist = async (done) => {
   const deletedPaths = await del([config.paths.dist.root], { force: true });
   console.log('Files and directories that would be deleted:\n', deletedPaths.join('\n'));
@@ -70,8 +86,13 @@ const devJS = () => {
 }
 
 const devHTML = () => {
-  return gulp.src(`${config.paths.src.html}/*.njk`)
-    .pipe(nunjucksCompile())
+  return gulp.src(`${config.paths.src.html}/pages/*.njk`)
+    .pipe(nunjucks({
+      path: [
+              `${config.paths.src.html}/`,
+              `${config.paths.src.img}/`,
+            ]
+    }))
     .pipe(gulp.dest(`${config.paths.dist.root}/`))
 }
 
@@ -89,8 +110,8 @@ const optimizeImages = () => {
       optipng({optimizationLevel: 5}),
       svgo({
         plugins: [
-          {removeViewBox: true},
-          {cleanupIDs: false},
+          {name: 'removeViewBox', active: true},
+          {name: 'cleanupIDs', active: false},
         ],
       }),
     ]))
@@ -106,18 +127,23 @@ const copyFonts = () => {
 const watch = () => {
   gulp.watch(`${config.paths.src.scss}/**/*.scss`, gulp.series(
     devCSS,
+    reloadServer,
   ));
   gulp.watch(`${config.paths.src.js}/*.js`, gulp.series(
     devJS,
+    reloadServer,
   ));
   gulp.watch(`${config.paths.src.html}/**/*.{html,njk}`, gulp.series(
-    buildHTML,
+    devHTML,
+    reloadServer,
   ));
   gulp.watch(`${config.paths.src.img}/**/*.{png,jpg,svg}`, gulp.series(
     optimizeImages,
+    reloadServer,
   ));
   gulp.watch(`${config.paths.src.fonts}/**/*`, gulp.series(
     copyFonts,
+    reloadServer,
   ));
 };
 
@@ -131,5 +157,6 @@ gulp.task('dev', gulp.series(
     optimizeImages,
     copyFonts,
   ),
+  startServer,
   watch,
 ));
